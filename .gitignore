@@ -6,6 +6,7 @@ instance/*.db
 instance/*.sqlite
 instance/posters/
 output/playwright/
+backups/
 *.pyc
 *.pyo
 *.pyd
