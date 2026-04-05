@@ -73,7 +73,7 @@ def review_metrics_subquery():
     return (
         db.session.query(
             Review.movie_id.label("movie_id"),
-            func.round(func.avg(Review.rating), 1).label("community_score"),
+            func.avg(Review.rating).label("community_score"),
             func.count(Review.id).label("review_count"),
         )
         .group_by(Review.movie_id)
@@ -145,7 +145,7 @@ def get_movie_detail(subject_id: str, reviewer_token: str | None = None):
         return None
 
     community_score, review_count = db.session.query(
-        func.round(func.avg(Review.rating), 1),
+        func.avg(Review.rating),
         func.count(Review.id),
     ).filter(Review.movie_id == movie.id).one()
 
@@ -177,7 +177,7 @@ def homepage_stats(city: str = "beijing") -> dict[str, int | float | datetime | 
     ) or 0
     total_reviews = db.session.scalar(select(func.count(Review.id))) or 0
     avg_douban = db.session.scalar(
-        select(func.round(func.avg(Movie.douban_score), 1)).where(
+        select(func.avg(Movie.douban_score)).where(
             Movie.is_now_playing.is_(True),
             Movie.source_city == city,
             Movie.douban_score.isnot(None),
