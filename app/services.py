@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+import threading
 
 from sqlalchemy import func, or_, select
 
 from .extensions import db
 from .models import Movie, Review
 from .scraper import DoubanNowPlayingScraper
+
+_sync_lock = threading.Lock()
 
 
 def utc_now() -> datetime:
@@ -28,6 +31,42 @@ class MovieCard:
     movie: Movie
     community_score: float | None
     review_count: int
+
+
+def latest_sync_at(city: str = "beijing") -> datetime | None:
+    return db.session.scalar(
+        select(func.max(Movie.last_synced_at)).where(
+            Movie.is_now_playing.is_(True),
+            Movie.source_city == city,
+        )
+    )
+
+
+def sync_is_due(last_sync: datetime | None, max_age_hours: int) -> bool:
+    if max_age_hours <= 0 or last_sync is None:
+        return True
+    return utc_now() - last_sync >= timedelta(hours=max_age_hours)
+
+
+def ensure_fresh_movies(city: str = "beijing", max_age_hours: int = 6) -> SyncResult | None:
+    last_sync = latest_sync_at(city=city)
+    if not sync_is_due(last_sync, max_age_hours=max_age_hours):
+        return None
+
+    blocking = last_sync is None
+    if blocking:
+        acquired = _sync_lock.acquire(timeout=60)
+    else:
+        acquired = _sync_lock.acquire(blocking=False)
+    if not acquired:
+        return None
+
+    try:
+        if not sync_is_due(latest_sync_at(city=city), max_age_hours=max_age_hours):
+            return None
+        return sync_now_playing(city=city)
+    finally:
+        _sync_lock.release()
 
 
 def review_metrics_subquery():
@@ -144,11 +183,7 @@ def homepage_stats(city: str = "beijing") -> dict[str, int | float | datetime | 
             Movie.douban_score.isnot(None),
         )
     )
-    last_sync = db.session.scalar(
-        select(func.max(Movie.last_synced_at)).where(
-            Movie.is_now_playing.is_(True), Movie.source_city == city
-        )
-    )
+    last_sync = latest_sync_at(city=city)
 
     return {
         "total_movies": int(total_movies),

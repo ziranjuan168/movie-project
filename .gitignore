@@ -4,9 +4,9 @@ __pycache__/
 .ruff_cache/
 instance/*.db
 instance/*.sqlite
+instance/posters/
 output/playwright/
 *.pyc
 *.pyo
 *.pyd
 .DS_Store
-

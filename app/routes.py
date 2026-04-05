@@ -20,7 +20,14 @@ from flask import (
 import requests
 
 from .scraper import USER_AGENT
-from .services import get_movie_by_subject, get_movie_detail, homepage_stats, list_now_playing, upsert_review
+from .services import (
+    ensure_fresh_movies,
+    get_movie_by_subject,
+    get_movie_detail,
+    homepage_stats,
+    list_now_playing,
+    upsert_review,
+)
 
 
 bp = Blueprint("main", __name__)
@@ -72,6 +79,11 @@ def home():
     sort = request.args.get("sort", "douban").strip() or "douban"
     city = current_app.config["DOUBAN_CITY"]
 
+    try:
+        ensure_fresh_movies(city=city, max_age_hours=current_app.config["SYNC_INTERVAL_HOURS"])
+    except Exception as exc:  # pragma: no cover - logs only
+        current_app.logger.exception("request sync failed: %s", exc)
+
     movies = list_now_playing(search=search, sort=sort, city=city)
     stats = homepage_stats(city=city)
     featured = movies[0] if movies else None
@@ -97,6 +109,12 @@ def home():
 
 @bp.route("/movies/<subject_id>")
 def movie_detail(subject_id: str):
+    city = current_app.config["DOUBAN_CITY"]
+    try:
+        ensure_fresh_movies(city=city, max_age_hours=current_app.config["SYNC_INTERVAL_HOURS"])
+    except Exception as exc:  # pragma: no cover - logs only
+        current_app.logger.exception("request sync failed: %s", exc)
+
     reviewer_token = request.cookies.get(COOKIE_NAME)
     detail = get_movie_detail(subject_id=subject_id, reviewer_token=reviewer_token)
     if detail is None:
@@ -105,8 +123,8 @@ def movie_detail(subject_id: str):
     return render_template(
         "movie_detail.html",
         brand_name=current_app.config["BRAND_NAME"],
-        city=current_app.config["DOUBAN_CITY"],
-        city_label=city_label(current_app.config["DOUBAN_CITY"]),
+        city=city,
+        city_label=city_label(city),
         **detail,
     )
 

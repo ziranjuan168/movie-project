@@ -1,0 +1,26 @@
+databases:
+  - name: movie-example-db
+    databaseName: movie_example_db
+    plan: free
+
+services:
+  - type: web
+    name: movie-example
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -b 0.0.0.0:$PORT wsgi:app
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: movie-example-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DOUBAN_CITY
+        value: beijing
+      - key: AUTO_SYNC_ENABLED
+        value: "true"
+      - key: SYNC_INTERVAL_HOURS
+        value: "6"
