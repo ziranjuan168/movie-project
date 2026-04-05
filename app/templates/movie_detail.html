@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}{{ movie.title }} | {{ brand_name }}{% endblock %}
+
+{% block content %}
+  <section
+    class="detail-hero"
+    {% if movie.poster_url %}
+      style="--hero-poster: url('{{ poster_src(movie) }}')"
+    {% endif %}
+  >
+    <div class="detail-shell">
+      <div class="detail-poster-shell">
+        {% if movie.poster_url %}
+          <img src="{{ poster_src(movie) }}" alt="{{ movie.title }}">
+        {% else %}
+          <div class="poster-fallback detail-fallback">{{ movie.title }}</div>
+        {% endif %}
+      </div>
+
+      <div class="detail-copy">
+        <p class="eyebrow">豆瓣{{ city_label }}正在上映</p>
+        <h1>{{ movie.title }}</h1>
+        <p class="lead">
+          {{ movie.director or '导演信息待同步' }}
+          {% if movie.region %} · {{ movie.region }}{% endif %}
+          {% if movie.duration %} · {{ movie.duration }}{% endif %}
+        </p>
+
+        <div class="detail-score-grid">
+          <div class="score-panel">
+            <label>豆瓣分数</label>
+            <strong>{{ '%.1f'|format(movie.douban_score) if movie.douban_score is not none else '待开分' }}</strong>
+            <span>{{ movie.douban_vote_count }} 人评分</span>
+          </div>
+          <div class="score-panel">
+            <label>站内分数</label>
+            <strong>{{ '%.1f'|format(community_score) if community_score is not none else '待评' }}</strong>
+            <span>{{ review_count }} 条评论</span>
+          </div>
+        </div>
+
+        <ul class="fact-list">
+          <li>
+            <span>上映年份</span>
+            <strong>{{ movie.release_year or '未知' }}</strong>
+          </li>
+          <li>
+            <span>地区</span>
+            <strong>{{ movie.region or '待补充' }}</strong>
+          </li>
+          <li>
+            <span>时长</span>
+            <strong>{{ movie.duration or '待补充' }}</strong>
+          </li>
+          <li>
+            <span>主演</span>
+            <strong>{{ movie.actors or '待补充' }}</strong>
+          </li>
+        </ul>
+
+        <p class="focus-note">最近同步：{{ movie.last_synced_at|datetime_cn }}</p>
+        <div class="detail-actions">
+          <a class="button" href="#review-form">写评论</a>
+          <a class="button secondary" href="{{ movie.douban_url }}" target="_blank" rel="noreferrer">打开豆瓣条目</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="detail-body">
+    <div class="panel" id="review-form">
+      <p class="eyebrow">发布观点</p>
+      <h2>{% if existing_review %}更新你的评论{% else %}留下第一层判断{% endif %}</h2>
+      <form class="form-grid" method="post" action="{{ url_for('main.submit_review', subject_id=movie.douban_subject_id) }}">
+        <label>
+          <span class="field-label">昵称</span>
+          <input
+            type="text"
+            name="reviewer_name"
+            maxlength="24"
+            value="{{ existing_review.reviewer_name if existing_review else '' }}"
+            placeholder="至少 2 个字"
+            required
+          >
+        </label>
+
+        <div class="range-wrap">
+          <div class="range-meta">
+            <span class="field-label">评分</span>
+            <strong><span data-rating-output>{{ existing_review.rating if existing_review else 8 }}</span> / 10</strong>
+          </div>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            step="1"
+            value="{{ existing_review.rating if existing_review else 8 }}"
+            name="rating"
+            data-rating-range
+          >
+        </div>
+
+        <label>
+          <span class="field-label">短评</span>
+          <textarea
+            name="content"
+            placeholder="说清楚这部片为什么值得看，或者为什么不值得。"
+            required
+          >{{ existing_review.content if existing_review else '' }}</textarea>
+        </label>
+
+        <input class="honeypot" type="text" name="website" tabindex="-1" autocomplete="off">
+
+        <button class="button" type="submit">{% if existing_review %}更新评论{% else %}发布评论{% endif %}</button>
+      </form>
+    </div>
+
+    <div class="panel" id="reviews">
+      <p class="eyebrow">站内评论</p>
+      <h2>{{ review_count }} 条观众评论</h2>
+
+      {% if reviews %}
+        <div class="review-stack">
+          {% for review in reviews %}
+            <article class="review-item">
+              <div class="review-head">
+                <div>
+                  <strong>{{ review.reviewer_name }}</strong>
+                  <p class="subtle">{{ review.updated_at|datetime_cn }}</p>
+                </div>
+                <span class="review-score">{{ review.rating }}/10</span>
+              </div>
+              <p>{{ review.content }}</p>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="empty-state">还没有站内评论。第一个留下评价的人，会直接改变这部片子的站内分。</p>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

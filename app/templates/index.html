@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}{{ brand_name }} | 正在上映电影，重新计分{% endblock %}
+
+{% block content %}
+  <section
+    class="hero"
+    {% if featured and featured.movie.poster_url %}
+      style="--hero-poster: url('{{ poster_src(featured.movie) }}')"
+    {% endif %}
+  >
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <p class="eyebrow">豆瓣热映同步 · {{ city_label }} · 站内重新评分</p>
+        <h1>正在上映电影，重新计分。</h1>
+        <p class="hero-text">
+          这里只保留豆瓣{{ city_label }}正在上映的电影，但分数不照搬共识。
+          观众在这里打分、留言，让片单和判断一起持续更新。
+        </p>
+
+        <div class="metric-row">
+          <div class="metric">
+            <strong>{{ stats.total_movies }}</strong>
+            <span>当前上映影片</span>
+          </div>
+          <div class="metric">
+            <strong>{{ '%.1f'|format(stats.avg_douban) if stats.avg_douban is not none else '待开分' }}</strong>
+            <span>豆瓣平均分</span>
+          </div>
+          <div class="metric">
+            <strong>{{ stats.total_reviews }}</strong>
+            <span>站内评论数</span>
+          </div>
+        </div>
+
+        <div class="hero-actions">
+          <a class="button" href="#movie-list">进入片单</a>
+          {% if featured %}
+            <a class="button secondary" href="{{ url_for('main.movie_detail', subject_id=featured.movie.douban_subject_id) }}">
+              看当前焦点
+            </a>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if featured %}
+        <aside class="hero-focus">
+          <a class="focus-poster" href="{{ url_for('main.movie_detail', subject_id=featured.movie.douban_subject_id) }}">
+            {% if featured.movie.poster_url %}
+              <img src="{{ poster_src(featured.movie) }}" alt="{{ featured.movie.title }}">
+            {% else %}
+              <span class="poster-fallback">{{ featured.movie.title }}</span>
+            {% endif %}
+          </a>
+          <div class="focus-copy">
+            <p class="eyebrow">当前焦点</p>
+            <h2>{{ featured.movie.title }}</h2>
+            <p class="focus-meta">
+              {{ featured.movie.director or '导演信息待同步' }}
+              {% if featured.movie.region %} · {{ featured.movie.region }}{% endif %}
+            </p>
+            <div class="score-strip">
+              <span class="score-chip">豆瓣 {{ '%.1f'|format(featured.movie.douban_score) if featured.movie.douban_score is not none else '待开分' }}</span>
+              <span class="score-chip">站内 {{ '%.1f'|format(featured.community_score) if featured.community_score is not none else '待评' }}</span>
+              <span class="score-chip">{{ featured.review_count }} 条评论</span>
+            </div>
+            <p class="focus-note">最近同步：{{ stats.last_sync|datetime_cn }}</p>
+          </div>
+        </aside>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="catalog" id="movie-list">
+    <div class="catalog-top">
+      <div>
+        <p class="eyebrow">当前片单</p>
+        <h2>热映列表</h2>
+      </div>
+      <p class="catalog-note">按豆瓣分数、站内分数或评论热度切换观看顺序。</p>
+    </div>
+
+    <form class="control-form" method="get" action="{{ url_for('main.home') }}">
+      <input
+        type="search"
+        name="q"
+        value="{{ search }}"
+        placeholder="按片名、导演、主演或地区搜索"
+        aria-label="搜索电影"
+      >
+      <select name="sort" aria-label="排序方式">
+        {% for value, label in sort_options.items() %}
+          <option value="{{ value }}" {% if sort == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="button">筛选</button>
+    </form>
+
+    {% if movies %}
+      <ol class="movie-grid">
+        {% for item in movies %}
+          <li class="movie-tile" style="--index: {{ loop.index0 }};">
+            <a class="movie-poster" href="{{ url_for('main.movie_detail', subject_id=item.movie.douban_subject_id) }}">
+              {% if item.movie.poster_url %}
+                <img src="{{ poster_src(item.movie) }}" alt="{{ item.movie.title }}">
+              {% else %}
+                <span class="poster-fallback">{{ item.movie.title }}</span>
+              {% endif %}
+            </a>
+            <div class="movie-text">
+              <p class="movie-kicker">
+                {{ item.movie.release_year or '年份待补' }}
+                {% if item.movie.region %} · {{ item.movie.region }}{% endif %}
+              </p>
+              <h3 class="movie-title">
+                <a href="{{ url_for('main.movie_detail', subject_id=item.movie.douban_subject_id) }}">
+                  {{ item.movie.title }}
+                </a>
+              </h3>
+              <p class="movie-copy">{{ item.movie.director or '导演信息待同步' }}</p>
+              <div class="score-strip">
+                <span class="score-chip">豆瓣 {{ '%.1f'|format(item.movie.douban_score) if item.movie.douban_score is not none else '待开分' }}</span>
+                <span class="score-chip">站内 {{ '%.1f'|format(item.community_score) if item.community_score is not none else '待评' }}</span>
+                <span class="score-chip">{{ item.review_count }} 条评论</span>
+              </div>
+              <p class="movie-copy subtle">{{ item.movie.actors or '主演信息待同步' }}</p>
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="empty-state">当前没有匹配结果。换个关键词，或者等下一次自动同步。</p>
+    {% endif %}
+  </section>
+{% endblock %}

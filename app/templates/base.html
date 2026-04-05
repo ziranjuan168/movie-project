@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ brand_name }}{% endblock %}</title>
+    <meta name="description" content="一个同步豆瓣正在上映片单、重新聚合观众评分与评论的电影网站。">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="{{ url_for('main.home') }}">{{ brand_name }}</a>
+      <div class="site-header-right">
+        <span class="site-header-note">正在上映电影评分站</span>
+        <a class="header-link" href="{{ url_for('main.home') }}#movie-list">片单</a>
+      </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-list">
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <p>数据范围：豆瓣正在上映片单。站内分数由本站用户评分实时聚合。</p>
+        <p>自动同步频率：每 {{ config['SYNC_INTERVAL_HOURS'] }} 小时。</p>
+      </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  </body>
+</html>
